@@ -1,110 +1,95 @@
-import keras
-# import keras_retinanet
-import tensorflow as tf
-from keras_retinanet import models
-from keras_retinanet.utils.image import read_image_bgr, preprocess_image, resize_image
-from keras_retinanet.utils.visualization import draw_box, draw_caption
-from keras_retinanet.utils.colors import label_color
-from keras_retinanet.utils.gpu import setup_gpu
-# import miscellaneous modules
-import cv2
-from io import BytesIO
-import pybase64
 import argparse
-import sys
-import os
-import numpy as np
-import time
 import json
-from flask import Flask, jsonify, request, abort
+import time
+from typing import Optional
+
+import cv2
+import numpy as np
+import pybase64
+from flask import Flask, jsonify, request, abort, Response
+
+from models.model_context import ModelsContext, model_type_to_model_type_name
+from structs import Size2D
 
 app = Flask(__name__)
+models_context = ModelsContext()
+current_model_hash: Optional[str] = None
+labels_to_names = {0: 'Pedestrian'}
+
 
 @app.route('/')
 def index():
     return jsonify({'status': "server is running"}), 200
 
 
-@app.route('/image', methods=['POST'])
+@app.route('/create_model/', methods=['POST'])
+def create_model():
+    global current_model_hash
+
+    required_keys = 'model_type', 'model_params'
+
+    if not all([k in request.args for k in required_keys]):
+        abort(400)
+
+    model_type_name = request.args['model_type'].lower()
+    if model_type_name not in model_type_to_model_type_name:
+        abort(Response(f'No such detector type: {model_type_name}. '
+                       f'Get one from this variants: {model_type_to_model_type_name.keys()}'))
+
+    current_model_hash = models_context.create_model(model_type_name,
+                                                     json.loads(request.args['model_params']))
+    return current_model_hash, 200
+
+
+@app.route('/image/', methods=['POST'])
 def predict_image():
     if not request.json or not 'data' in request.json:
         abort(400)
-    
-    caption = run_detection_image(model, labels_to_names, request.json['data'])
+
+    if current_model_hash is None:
+        abort(Response('No models created'))
+
+    caption = run_detection_image(request.json['data'])
     return caption, 200
 
 
-def run_detection_image(model, labels_to_names, data):
+def run_detection_image(image_data):
+    imgdata = pybase64.b64decode(image_data)
+    file_bytes = np.asarray(bytearray(imgdata), dtype=np.uint8)
+    image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    image_size = Size2D(width=image.shape[1], height=image.shape[0])
+    model = models_context.model(current_model_hash)
+
     print("start predict...")
     start_time = time.time()
-    with sess.as_default():
-        with graph.as_default():
-            imgdata = pybase64.b64decode(data)
-            file_bytes = np.asarray(bytearray(imgdata), dtype=np.uint8)
-            image = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    bboxes = model.predict(image)
+    print("done in {} s".format(time.time() - start_time))
 
-            # preprocess image for network
-            image = preprocess_image(image)
-            image, scale = resize_image(image)
+    objects = []
+    for bbox in bboxes:
+        xmin, ymin, xmax, ymax = map(str, bbox.xyxy(image_size))
+        objects.append({
+            'name': labels_to_names[bbox.category_id],
+            'score': str(bbox.confidence),
+            'xmin': xmin,
+            'ymin': ymin,
+            'xmax': xmax,
+            'ymax': ymax
+        })
+    return json.dumps(dict(objects=objects))
 
-            # process image
-            boxes, scores, labels = model.predict_on_batch(np.expand_dims(image, axis=0))
-
-            # correct for image scale
-            boxes /= scale
-
-            objects = []
-            reaponse = {
-              'objects': objects
-            }
-
-            # visualize detections
-            for box, score, label in zip(boxes[0], scores[0], labels[0]):
-                # scores are sorted so we can break
-                if score < 0.5:
-                    break
-                b = np.array(box.astype(int)).astype(int)
-                # x1 y1 x2 y2
-                obj = {
-                  'name': labels_to_names[label],
-                  'score': str(score),
-                  'xmin': str(b[0]),
-                  'ymin': str(b[1]),
-                  'xmax': str(b[2]),
-                  'ymax': str(b[3])
-                }
-                objects.append(obj)
-            reaponse_json = json.dumps(reaponse)
-            print("done in {} s".format(time.time() - start_time))
-            return reaponse_json
-
-def load_model(args):
-    global sess 
-    global model
-    global labels_to_names
-    global graph
-
-    sess = tf.InteractiveSession()
-    graph = tf.get_default_graph()
-    setup_gpu(0)
-    model_path = args.model
-    model = models.load_model(model_path, backbone_name='resnet50')
-    labels_to_names = {0: 'Pedestrian'}
-    return model, labels_to_names
 
 def parse_args(args):
     """ Parse the arguments.
     """
     parser = argparse.ArgumentParser(description='Evaluation script for a RetinaNet network.')
-    parser.add_argument('--model', help='Path to RetinaNet model.', default=os.path.join('snapshots', 'resnet50_liza_alert_v1_interface.h5'))
-    parser.add_argument('--gpu', help='Visile gpu device. Set to -1 if CPU', default=0)
     return parser.parse_args(args)
+
 
 def main(args=None):
     args = parse_args(args)
-    load_model(args)
-    print('model loaded')
-    app.run(debug=False, host='0.0.0.0', port=5000)    
+    app.run(debug=False, host='0.0.0.0', port=5000)
+
 
 if __name__ == '__main__':
     main()

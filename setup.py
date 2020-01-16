@@ -1,13 +1,14 @@
+from distutils.command.build_ext import build_ext as DistUtilsBuildExt
+
 import setuptools
 from setuptools.extension import Extension
-from distutils.command.build_ext import build_ext as DistUtilsBuildExt
 
 
 class BuildExtension(setuptools.Command):
-    description     = DistUtilsBuildExt.description
-    user_options    = DistUtilsBuildExt.user_options
+    description = DistUtilsBuildExt.description
+    user_options = DistUtilsBuildExt.user_options
     boolean_options = DistUtilsBuildExt.boolean_options
-    help_options    = DistUtilsBuildExt.help_options
+    help_options = DistUtilsBuildExt.help_options
 
     def __init__(self, *args, **kwargs):
         from setuptools.command.build_ext import build_ext as SetupToolsBuildExt
@@ -36,32 +37,22 @@ class BuildExtension(setuptools.Command):
 
 extensions = [
     Extension(
-        'keras_retinanet.utils.compute_overlap',
-        ['keras_retinanet/utils/compute_overlap.pyx']
+        'models.keras_retinanet.compute_overlap',
+        ['models/keras_retinanet/compute_overlap.pyx']
     ),
 ]
 
+with open('./requirements.txt', 'r') as f:
+    requirements = [l.strip() for l in f.readlines()]
 
 setuptools.setup(
-    name             = 'keras-retinanet',
-    version          = '0.5.1',
-    description      = 'Keras implementation of RetinaNet object detection.',
-    url              = 'https://github.com/fizyr/keras-retinanet',
-    author           = 'Hans Gaiser',
-    author_email     = 'h.gaiser@fizyr.com',
-    maintainer       = 'Hans Gaiser',
-    maintainer_email = 'h.gaiser@fizyr.com',
-    cmdclass         = {'build_ext': BuildExtension},
-    packages         = setuptools.find_packages(),
-    install_requires = ['keras', 'keras-resnet==0.2.0', 'efficientnet==1.0.0', 'image-classifiers==1.0.0', 'numpy==1.15.0', 'six', 'scipy', 'cython', 'Pillow', 'opencv-python', 'progressbar2'],
-    entry_points     = {
-        'console_scripts': [
-            'retinanet-train=keras_retinanet.bin.train:main',
-            'retinanet-evaluate=keras_retinanet.bin.evaluate:main',
-            'retinanet-debug=keras_retinanet.bin.debug:main',
-            'retinanet-convert-model=keras_retinanet.bin.convert_model:main',
-        ],
-    },
-    ext_modules    = extensions,
-    setup_requires = ["cython>=0.28", "numpy>=1.14.0"]
+    name='lacmus',
+    version='0.0.1',
+    description='Keras implementation of RetinaNet object detection.',
+    url='https://github.com/lacmus-foundation/lacmus',
+    cmdclass={'build_ext': BuildExtension},
+    packages=setuptools.find_packages(),
+    install_requires=requirements,
+    ext_modules=extensions,
+    setup_requires=["cython>=0.28", "numpy>=1.14.0"]
 )

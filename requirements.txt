@@ -1,0 +1,11 @@
+cython
+dataclasses
+efficientnet==1.0.0
+keras
+keras-resnet==0.2.0
+numpy
+onnx
+onnxruntime
+opencv-python
+Pillow
+tensorflow
