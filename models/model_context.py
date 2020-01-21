@@ -1,18 +1,16 @@
 import logging
-from enum import Enum
-from typing import Optional, Dict, Any, List
+import uuid
+from typing import Optional, Dict, Any
 
 from models.keras_model import KerasRetinaNet
 from models.model import Model
-
-import uuid
-
+from models.onnx_model import TTFNetOnnxModel
 
 __all__ = ['model_type_to_model_type_name', 'ModelsContext']
 
-
 model_type_to_model_type_name = {
-    'kerasretinanet': KerasRetinaNet
+    'kerasretinanet': KerasRetinaNet,
+    'ttfnetonnx': TTFNetOnnxModel
 }
 
 

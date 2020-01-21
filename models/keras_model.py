@@ -16,7 +16,7 @@ from utils.gpu import setup_gpu_if_exists
 __all__ = ['KerasRetinaNet']
 
 
-class KerasModel(Model, ABC):
+class KerasModel(Model):
     def __init__(self, config: Dict[str, Any]):
         assert 'filename' in config, f'Set filename path for {str(self)} model'
         super().__init__(config)
@@ -80,7 +80,7 @@ class KerasRetinaNet(KerasModel):
         image = self._normalize_image(image)
         image, scale = self._resize_image(image)
         self._current_scale = scale
-        return image
+        return image[np.newaxis, ...]
 
     def _postprocess_bboxes(self, model_output: Any) -> List[Bbox]:
         boxes, scores, labels = model_output
