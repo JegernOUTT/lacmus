@@ -19,7 +19,11 @@ class OnnxModel(Model):
         self._input_name: Optional[str] = None
 
     def init(self):
-        self._onnx_session = rt.InferenceSession(str(self._filename))
+        so = rt.SessionOptions()
+        so.intra_op_num_threads = 8
+        so.execution_mode = rt.ExecutionMode.ORT_PARALLEL
+        so.graph_optimization_level = rt.GraphOptimizationLevel.ORT_ENABLE_ALL
+        self._onnx_session = rt.InferenceSession(str(self._filename), sess_options=so)
         inputs = self._onnx_session.get_inputs()
         assert len(inputs) == 1, "Onnx model must contain 1 image input"
         self._input_name = inputs[0].name
