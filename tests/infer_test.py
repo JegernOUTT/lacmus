@@ -6,7 +6,7 @@ from tqdm import tqdm
 from models.model_context import ModelsContext
 
 
-def infer_time_test(iter_count=20):
+def infer_time_test(iter_count=6):
     assert iter_count > 5, "Set iter more than 5 cause of warmup stage"
     model_type_2_model_config = {
         'kerasretinanet': {"filename": "./resnet50_liza_alert_v1_interface.h5",

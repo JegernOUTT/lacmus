@@ -62,8 +62,7 @@ class KerasRetinaNet(KerasModel):
         assert 'backbone_type' in config, 'Backbone type required in model config'
         self._backbone_type: str = config['backbone_type']
         assert 'width' in config and 'height' in config, 'Width and height required in model config'
-        self._width = config['width']
-        self._height = config['height']
+        self._model_image_size = Size2D(width=config['width'], height=config['height'])
 
         self._current_scale = None
         self._current_image_size = None
@@ -112,8 +111,6 @@ class KerasRetinaNet(KerasModel):
         # mostly identical to
         # "https://github.com/keras-team/keras-applications/blob/master/keras_applications/imagenet_utils.py"
         # except for converting RGB -> BGR since we assume BGR already
-
-        # covert always to float32 to keep compatibility with opencv
         x = image.astype(np.float32)
 
         if mode == 'tf':
